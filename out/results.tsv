@@ -1,0 +1,7 @@
+phase	clients	txns	commits_during_load	wal_MB_during_load	rollback_during_load	FLUSH_at_walsender_exit	bytes_per_count	commits_per_count
+0-idle-baseline	0	0	6	0.0	0	0	n/a	n/a
+A-many-tiny-unpub	8	200000	200015	36.2	0	200000	189.9	1.000
+B-few-huge-unpub	4	300	311	489.7	0	300	1711737.1	1.037
+C-many-tiny-pub	8	40000	40016	7.3	0	40000	190.4	1.000
+D-readonly-only	8	200000	200015	0.7	0	2	356352.0	100007.500
+E-repeat-idle	0	0	6	0.0	0	1	0.0	6.000

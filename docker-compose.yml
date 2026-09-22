@@ -1,0 +1,72 @@
+# Reproduction harness: pg_stat_database.xact_rollback jumps when a logical
+# walsender exits.  Publisher + subscriber using native logical replication,
+# wal_level=logical, with one published table among several unpublished ones.
+services:
+  pub:
+    image: postgres:17-alpine
+    container_name: wsrb-pub
+    environment:
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: appdb
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10
+      - -c
+      - wal_sender_timeout=10s
+      - -c
+      - log_replication_commands=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_min_messages=info
+      - -c
+      - track_counts=on
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_wal_size=8GB
+      - -c
+      - checkpoint_timeout=30min
+      - -c
+      - synchronous_commit=off
+    ports: ["55432:5432"]
+    volumes:
+      - ./sql/01-publisher-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./bench:/bench:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  sub:
+    image: postgres:17-alpine
+    container_name: wsrb-sub
+    environment:
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: appdb
+    command:
+      - postgres
+      - -c
+      - max_logical_replication_workers=4
+      - -c
+      - max_worker_processes=8
+      - -c
+      - synchronous_commit=off
+    ports: ["55433:5432"]
+    volumes:
+      - ./sql/02-subscriber-init.sql:/docker-entrypoint-initdb.d/02-init.sql:ro
+    depends_on:
+      pub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
